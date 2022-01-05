@@ -2,41 +2,40 @@ import pandas
 from matplotlib import pyplot as plt
 import os
 
-path = "C:\\Users\\14403\\Desktop\\Gerdt Lab\\Currently Working On\\processed-data\\fluor_csvs\\"
-filenames = os.listdir(path)
 
-for filename in filenames:
-	subfilenames = os.listdir(path + filename)
-	df_list = []
-	averages = []
-	names = []
+# Set path to be the folder containing the folders that contain the csvs
+path = r"C:/Users/14403/Desktop/Gerdt Lab/Currently Working On/processed-data/fluor_csvs/"
+# path = "/home/bkallus/Python-Scripts-for-Graphing/fluor_csvs/"
 
-	for subfilename in subfilenames:
-		average_list = []
-		df = pandas.read_csv(path + filename + "\\" + subfilename, sep=',', skiprows=3)
-		i = 0
-		for (name, data) in df.iteritems():
-			if pandas.isna(data[0]):
-				last_val = data[0]
-				break
-			i += 1
+subdirs = os.listdir(path)
+for subdir in subdirs: # For each experiment
+    subfilenames = os.listdir(path + "/" + subdir)
+    df_list = [] # Contains one DataFrame for each trial
+    average_lists = [] # Contains one list of averages (to be plotted) for each trial
 
-		if pandas.notna(last_val):
-			break
+    for subfilename in subfilenames: # For each trial
+        df = pandas.read_csv(path + "/" + subdir + "/" + subfilename, sep=',', skiprows=3)
+        for i, (name, data) in enumerate(df.iteritems()): # Find the first NaN
+            if pandas.isna(data[0]):
+                last_val = data[0]
+                break
 
-		df_list.append(df.drop(columns=df.columns[i:]))
+        columns_to_drop = [df.columns[0]] # Drop the first column because it's just a timestamp
+        if pandas.isna(last_val): # If there is a NaN in the first row
+            columns_to_drop += list(df.columns[i:]) # Cut off all the columns past the first one with a NaN in the first row
 
-		for (name, data) in df.iterrows():
-			average_list.append(data[1:].sum() / (len(data) - 1))
+        df = df.drop(columns=columns_to_drop)
+        df_list.append(df)
 
-		names.append(subfilename)
+        average_list = []
+        for name, data in df.iterrows(): # For each row in the sliced csv
+            average_list.append(data.sum() / len(data)) # Average the row and save it
 
-		averages.append(average_list)
+        average_lists.append(average_list)
 
-	trial_count = 0
-	for listy in averages:
-		trial_count += 1
-		plt.plot(listy, label = filename + " trial " + str(trial_count))
-	plt.legend()
-	plt.savefig(fname = filename + "_graph")
-	plt.cla()
+    for trial, listy in enumerate(average_lists):
+        plt.plot(listy, label = subdir + " trial " + str(trial + 1))
+
+    plt.legend()
+    plt.savefig(fname = "graphs" + "/" + subdir + "_graph")
+    plt.cla()
